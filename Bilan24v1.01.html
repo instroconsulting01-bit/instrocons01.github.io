@@ -1,0 +1,886 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>INSTR'O CONSULTING — CSV → Volume horaire (m³)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111a2e; --muted:#a9b4d0; --text:#e9eeff;
+      --accent:#6aa8ff; --ok:#35d07f; --warn:#ffd66a; --err:#ff6a6a; --border:#203055;
+    }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#070c16, #0b1220 40%, #070c16); color:var(--text);}
+    .wrap{ max-width:1200px; margin:20px auto; padding:0 16px;}
+    .topbar{
+      display:flex; align-items:center; gap:12px;
+      padding:10px 12px; border:1px solid var(--border); border-radius:14px;
+      background:rgba(17,26,46,.55); box-shadow:0 10px 35px rgba(0,0,0,.25);
+      margin-bottom:14px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .brand .txt{ line-height:1.05; }
+    .brand .txt .t1{ font-weight:900; letter-spacing:.2px; }
+    .brand .txt .t2{ font-size:12px; color:var(--muted); }
+    .h1{ font-size:18px; font-weight:800; margin:0; }
+    .sub{ color:var(--muted); margin:0; font-size:12.5px; line-height:1.4;}
+    .grid{ display:grid; grid-template-columns: 1.15fr .85fr; gap:14px; }
+    .card{ background:rgba(17,26,46,.92); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 10px 35px rgba(0,0,0,.35);}
+    .card h2{ font-size:14px; margin:0 0 10px; color:#dbe6ff;}
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px;}
+    select,input[type="file"],input[type="number"],input[type="date"]{ width:100%; box-sizing:border-box; background:#0c1426; color:var(--text);
+      border:1px solid #22345d; border-radius:10px; padding:10px; outline:none; }
+    input:disabled, select:disabled{ opacity:.6; cursor:not-allowed; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;}
+    .row > *{ flex:1; min-width:210px;}
+    .radios{ display:flex; gap:10px; flex-wrap:wrap; }
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #22345d; border-radius:999px; background:#0c1426; font-size:12px; color:var(--muted);}
+    .pill input{ margin:0; }
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    button{ border:1px solid #24406f; background:linear-gradient(180deg,#16305e,#0f2143);
+      color:var(--text); padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:800; }
+    button:hover{ filter:brightness(1.08); }
+    button:disabled{ opacity:.45; cursor:not-allowed; }
+    .ghost{ background:transparent; border-color:#22345d; }
+    .ok{ border-color:rgba(53,208,127,.35); }
+    .log{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+      font-size:12px; white-space:pre-wrap; background:#071025; border:1px solid #22345d;
+      border-radius:12px; padding:10px; color:#cfe0ff; max-height:240px; overflow:auto; }
+    .kpis{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:10px;}
+    .kpi{ background:#0c1426; border:1px solid #22345d; border-radius:12px; padding:10px;}
+    .kpi .v{ font-size:18px; font-weight:900;}
+    .kpi .t{ font-size:11px; color:var(--muted);}
+    table{ width:100%; border-collapse:collapse; font-size:12px;}
+    th, td{ border-bottom:1px solid #22345d; padding:7px 6px; text-align:left; vertical-align:top;}
+    th{ color:#cfe0ff; font-weight:900;}
+    .tiny{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.35;}
+    .statline{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .stat{ flex:1; min-width:170px; background:#0c1426; border:1px solid #22345d; border-radius:12px; padding:10px;}
+    .stat .v{ font-size:16px; font-weight:900; }
+    .stat .t{ font-size:11px; color:var(--muted); }
+    .formulaBox{
+      margin-top:10px; background:#0c1426; border:1px solid #22345d; border-radius:12px; padding:10px;
+    }
+    .formulaBox .title{ font-weight:900; font-size:12px; color:#cfe0ff; margin-bottom:6px;}
+    .formulaBox code{
+      display:block; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+      font-size:12px; color:#cfe0ff;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- TOP BAR with logo -->
+  <div class="topbar">
+    <div class="brand">
+      <!-- Inline SVG logo (lightweight) -->
+      <svg width="44" height="44" viewBox="0 0 64 64" aria-label="INSTR'O CONSULTING" role="img">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#6aa8ff"/>
+            <stop offset="1" stop-color="#35d07f"/>
+          </linearGradient>
+        </defs>
+        <rect x="6" y="6" width="52" height="52" rx="14" fill="#0c1426" stroke="#22345d" />
+        <path d="M32 13c6 9 13 16 13 24a13 13 0 1 1-26 0c0-8 7-15 13-24z" fill="url(#g)" opacity="0.95"/>
+        <path d="M24 41c2.5 3.8 7 6 12 5.2" fill="none" stroke="#e9eeff" stroke-width="2.2" stroke-linecap="round" opacity=".7"/>
+      </svg>
+
+      <div class="txt">
+        <div class="t1">INSTR'O CONSULTING</div>
+        <div class="t2">CSV → Volume horaire (m³)</div>
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div>
+      <div class="h1">Conversion débit → volume</div>
+      <div class="sub">Import CSV, mapping colonnes, intégration temporelle, export en “;”.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="card">
+      <h2>1) Import & configuration</h2>
+
+      <label>Fichier CSV</label>
+      <input id="file" type="file" accept=".csv,text/csv" />
+
+      <div class="row">
+        <div>
+          <label>Séparateur</label>
+          <div class="radios">
+            <label class="pill"><input type="radio" name="sep" value="auto" checked /> Auto</label>
+            <label class="pill"><input type="radio" name="sep" value=";" /> ;</label>
+            <label class="pill"><input type="radio" name="sep" value="," /> ,</label>
+            <label class="pill"><input type="radio" name="sep" value="\t" /> TAB</label>
+          </div>
+        </div>
+        <div>
+          <label>Décimales</label>
+          <div class="radios">
+            <label class="pill"><input type="radio" name="dec" value="auto" checked /> Auto</label>
+            <label class="pill"><input type="radio" name="dec" value="comma" /> Virgule</label>
+            <label class="pill"><input type="radio" name="dec" value="dot" /> Point</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Choix de la ligne d’en-tête (index à partir de 1)</label>
+          <input id="headerRow" type="number" min="1" step="1" value="0" />
+          <div class="tiny">Mets <b>0</b> pour auto-détection, ou force un numéro de ligne.</div>
+        </div>
+        <div>
+          <label>Unité du débit (colonne débit)</label>
+          <select id="flowUnit">
+            <option value="m3h">m³/h</option>
+            <option value="m3s">m³/s</option>
+            <option value="ls">l/s</option>
+            <option value="lmin">l/min</option>
+            <option value="lh">l/h</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Colonne DATE</label>
+          <select id="colDate"></select>
+        </div>
+        <div>
+          <label>Colonne HEURE (optionnelle)</label>
+          <select id="colTime"></select>
+        </div>
+        <div>
+          <label>Colonne DÉBIT</label>
+          <select id="colFlow"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Format DATE (si la date est seule)</label>
+          <select id="dateFormat">
+            <option value="auto" selected>Auto</option>
+            <option value="YMD_DASH">YYYY-MM-DD</option>
+            <option value="DMY_SLASH">DD/MM/YYYY</option>
+            <option value="DMY_DASH">DD-MM-YYYY</option>
+          </select>
+        </div>
+        <div>
+          <label>Format HEURE (si heure séparée)</label>
+          <select id="timeFormat">
+            <option value="auto" selected>Auto</option>
+            <option value="HMS">HH:MM:SS</option>
+            <option value="HM">HH:MM</option>
+          </select>
+        </div>
+        <div>
+          <label>Ajouter Cumul_m3</label>
+          <div class="radios">
+            <label class="pill"><input id="withCumul" type="checkbox" checked /> Oui</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="btnLoad">Charger & analyser</button>
+        <button id="btnConvert" disabled>Convertir → Volume horaire</button>
+        <button id="btnDownload" class="ok" disabled>Télécharger CSV (plage)</button>
+        <button id="btnReset" class="ghost">Réinitialiser</button>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="kpiLines">—</div><div class="t">Lignes CSV (brutes)</div></div>
+        <div class="kpi"><div class="v" id="kpiPoints">—</div><div class="t">Points valides</div></div>
+        <div class="kpi"><div class="v" id="kpiTotal">—</div><div class="t">Volume total (m³)</div></div>
+      </div>
+
+      <label>Journal</label>
+      <div id="log" class="log">Prêt. Clique “Charger & analyser”.</div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="card">
+      <h2>2) Plage de dates & résultats</h2>
+
+      <div class="tiny">
+        Sélectionne une plage dans la période traitée. Le cumul est <b>rebasé</b> sur cette plage (repart à 0).
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label>Date début</label>
+          <input id="dateStart" type="date" disabled />
+        </div>
+        <div>
+          <label>Date fin</label>
+          <input id="dateEnd" type="date" disabled />
+        </div>
+        <div style="min-width:160px; flex:0.6;">
+          <label>&nbsp;</label>
+          <button id="btnApplyFilter" class="ghost" disabled>Appliquer</button>
+        </div>
+      </div>
+
+      <!-- Formula explanation -->
+      <div class="formulaBox" id="formulaBox" style="display:none;">
+        <div class="title">Formule utilisée (volume horaire)</div>
+        <code id="formulaText"></code>
+        <div class="tiny" style="margin-top:6px;">
+          Le débit est converti en <b>m³/h</b>, puis l’intégration tient compte des intervalles irréguliers et des coupures d’heure.
+        </div>
+      </div>
+
+      <div class="statline">
+        <div class="stat">
+          <div class="v" id="statRange">—</div>
+          <div class="t">Plage active</div>
+        </div>
+        <div class="stat">
+          <div class="v" id="statHours">—</div>
+          <div class="t">Heures affichées</div>
+        </div>
+        <div class="stat">
+          <div class="v" id="statVol">—</div>
+          <div class="t">Volume sur plage (m³)</div>
+        </div>
+      </div>
+
+      <div style="overflow:auto; max-height:520px; margin-top:10px;">
+        <table id="outPreview">
+          <thead><tr><th>Heure</th><th>Volume_horaire_m3</th><th id="thCumul">Cumul_m3 (rebasé)</th></tr></thead>
+          <tbody id="outBody"></tbody>
+        </table>
+      </div>
+
+      <div class="tiny">
+        Le CSV téléchargé inclut un marqueur : <b>“Généré avec un outil INSTR'O CONSULTING”</b>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  const fileEl = $("file");
+  const headerRowEl = $("headerRow");
+  const unitEl = $("flowUnit");
+  const colDateEl = $("colDate");
+  const colTimeEl = $("colTime");
+  const colFlowEl = $("colFlow");
+  const dateFmtEl = $("dateFormat");
+  const timeFmtEl = $("timeFormat");
+  const withCumulEl = $("withCumul");
+
+  const btnLoad = $("btnLoad");
+  const btnConvert = $("btnConvert");
+  const btnDownload = $("btnDownload");
+  const btnReset = $("btnReset");
+
+  const logEl = $("log");
+  const kpiLines = $("kpiLines");
+  const kpiPoints = $("kpiPoints");
+  const kpiTotal = $("kpiTotal");
+
+  const dateStartEl = $("dateStart");
+  const dateEndEl = $("dateEnd");
+  const btnApplyFilter = $("btnApplyFilter");
+
+  const statRangeEl = $("statRange");
+  const statHoursEl = $("statHours");
+  const statVolEl = $("statVol");
+
+  const formulaBoxEl = $("formulaBox");
+  const formulaTextEl = $("formulaText");
+
+  const outBody = $("outBody");
+  const thCumul = $("thCumul");
+
+  let rawText = "";
+  let rows = [];        // parsed rows (array of array of strings)
+  let header = [];      // header cells
+  let headerIndex = -1; // 0-based
+  let outRows = [];     // full dataset hourly: [{Heure, Volume_horaire_m3}]
+  let outCsv = "";
+
+  // filtering state
+  let outMinDate = null;
+  let outMaxDate = null;
+  let filteredRows = []; // rows actually displayed (with optional rebased cumul)
+
+  function log(msg, type="info"){
+    const stamp = new Date().toLocaleTimeString();
+    const p = type==="err"?"❌":type==="warn"?"⚠️":type==="ok"?"✅":"ℹ️";
+    logEl.textContent += `\n[${stamp}] ${p} ${msg}`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetUI(){
+    logEl.textContent = "Prêt. Clique “Charger & analyser”.";
+    outBody.innerHTML = "";
+    kpiLines.textContent = "—"; kpiPoints.textContent="—"; kpiTotal.textContent="—";
+    btnConvert.disabled = true; btnDownload.disabled = true;
+
+    colDateEl.innerHTML = ""; colTimeEl.innerHTML = ""; colFlowEl.innerHTML = "";
+
+    dateStartEl.value = ""; dateEndEl.value = "";
+    dateStartEl.disabled = true; dateEndEl.disabled = true;
+    btnApplyFilter.disabled = true;
+
+    statRangeEl.textContent = "—";
+    statHoursEl.textContent = "—";
+    statVolEl.textContent = "—";
+
+    formulaBoxEl.style.display = "none";
+    formulaTextEl.textContent = "";
+
+    rows=[]; header=[]; headerIndex=-1; outRows=[]; outCsv=""; rawText="";
+    outMinDate=null; outMaxDate=null;
+    filteredRows = [];
+  }
+
+  function getRadio(name){
+    return document.querySelector(`input[name="${name}"]:checked`).value;
+  }
+
+  function detectSeparator(sample){
+    const candidates = [";","\t",",","|"];
+    let best = {sep:";", score:-1};
+    for(const sep of candidates){
+      const counts = sample.split(/\r?\n/).slice(0,25).filter(l=>l.trim().length>0)
+        .map(l=>splitCsvLine(l, sep).length);
+      const freq = {};
+      for(const c of counts) freq[c]=(freq[c]||0)+1;
+      let modeCount = 0;
+      for(const k in freq) modeCount = Math.max(modeCount, freq[k]);
+      const score = modeCount;
+      if(score > best.score) best = {sep, score};
+    }
+    return best.sep;
+  }
+
+  // CSV split with quotes
+  function splitCsvLine(line, sep){
+    const out = [];
+    let cur = "";
+    let inQ = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(ch === '"'){
+        if(inQ && line[i+1] === '"'){ cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if(ch === sep && !inQ){
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map(s => s.trim());
+  }
+
+  function parseCsv(text, sep){
+    const lines = text.split(/\r?\n/).map(l => l.replace(/\uFEFF/g,"")).filter(l => l.trim().length>0);
+    const data = lines.map(l => splitCsvLine(l, sep));
+    return { lines, data };
+  }
+
+  function findHeaderRow(data){
+    const keys = ["data","ora","date","time","timestamp"];
+    for(let i=0;i<Math.min(data.length, 80); i++){
+      const row = data[i].map(x => (x||"").replace(/^"+|"+$/g,"").toLowerCase());
+      const hit = keys.reduce((acc,k)=> acc + (row.includes(k)?1:0), 0);
+      if(hit >= 2) return i;
+    }
+    for(let i=0;i<Math.min(data.length, 80); i++){
+      if(data[i].length >= 3) return i;
+    }
+    return 0;
+  }
+
+  function fillColumnSelectors(header){
+    function addOptions(select, allowNone=false){
+      select.innerHTML = "";
+      if(allowNone){
+        const o = document.createElement("option");
+        o.value = "-1"; o.textContent = "(Aucune)";
+        select.appendChild(o);
+      }
+      header.forEach((h, idx) => {
+        const o = document.createElement("option");
+        o.value = String(idx);
+        o.textContent = `${idx+1} — ${h || "(vide)"}`;
+        select.appendChild(o);
+      });
+    }
+    addOptions(colDateEl, false);
+    addOptions(colTimeEl, true);
+    addOptions(colFlowEl, false);
+
+    // auto-guess best columns
+    const norm = header.map(h => (h||"").replace(/^"+|"+$/g,"").toLowerCase());
+    const iDate = norm.indexOf("data") >= 0 ? norm.indexOf("data") : norm.findIndex(h=>h.includes("date"));
+    const iTime = norm.indexOf("ora") >= 0 ? norm.indexOf("ora") : norm.findIndex(h=>h.includes("time"));
+    const iFlow = norm.indexOf("q1") >= 0 ? norm.indexOf("q1") : norm.findIndex(h=>h.includes("flow")||h.includes("debit")||h.includes("débit"));
+    if(iDate >= 0) colDateEl.value = String(iDate);
+    if(iTime >= 0) colTimeEl.value = String(iTime); else colTimeEl.value = "-1";
+    if(iFlow >= 0) colFlowEl.value = String(iFlow);
+  }
+
+  function parseNumber(s, decMode){
+    if(s == null) return null;
+    const t = String(s).trim().replace(/^"+|"+$/g,"");
+    if(t === "" || /^nan$/i.test(t)) return null;
+
+    let x = t;
+    if(decMode === "auto"){
+      if(x.includes(",") && !x.includes(".")) x = x.replace(",", ".");
+      else x = x.replace(",", ".");
+    } else if(decMode === "comma"){
+      x = x.replace(",", ".");
+    }
+    const v = Number(x);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  function parseDateTime(dateStr, timeStr, dateFmt, timeFmt){
+    const ds = (dateStr ?? "").toString().trim().replace(/^"+|"+$/g,"");
+    const ts = (timeStr ?? "").toString().trim().replace(/^"+|"+$/g,"");
+
+    if(!ts){
+      return tryParseDateTime(ds);
+    }
+
+    let y,m,d;
+    if(dateFmt === "auto"){
+      if(/^\d{4}-\d{2}-\d{2}$/.test(ds)){ dateFmt = "YMD_DASH"; }
+      else if(/^\d{2}\/\d{2}\/\d{4}$/.test(ds)){ dateFmt = "DMY_SLASH"; }
+      else if(/^\d{2}-\d{2}-\d{4}$/.test(ds)){ dateFmt = "DMY_DASH"; }
+    }
+    if(dateFmt === "YMD_DASH"){
+      const m1 = ds.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m1) return null;
+      y=+m1[1]; m=+m1[2]; d=+m1[3];
+    } else if(dateFmt === "DMY_SLASH"){
+      const m1 = ds.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(!m1) return null;
+      d=+m1[1]; m=+m1[2]; y=+m1[3];
+    } else if(dateFmt === "DMY_DASH"){
+      const m1 = ds.match(/^(\d{2})-(\d{2})-(\d{4})$/); if(!m1) return null;
+      d=+m1[1]; m=+m1[2]; y=+m1[3];
+    } else {
+      return null;
+    }
+
+    let hh=0, mm=0, ss=0;
+    if(timeFmt === "auto"){
+      if(/^\d{2}:\d{2}:\d{2}$/.test(ts)) timeFmt = "HMS";
+      else if(/^\d{2}:\d{2}$/.test(ts)) timeFmt = "HM";
+    }
+    if(timeFmt === "HMS"){
+      const m2 = ts.match(/^(\d{2}):(\d{2}):(\d{2})$/); if(!m2) return null;
+      hh=+m2[1]; mm=+m2[2]; ss=+m2[3];
+    } else if(timeFmt === "HM"){
+      const m2 = ts.match(/^(\d{2}):(\d{2})$/); if(!m2) return null;
+      hh=+m2[1]; mm=+m2[2]; ss=0;
+    } else {
+      return null;
+    }
+
+    const dt = new Date(y, m-1, d, hh, mm, ss, 0);
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+
+  function tryParseDateTime(s){
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2}) T:(\d{2})(?::(\d{2}))?$/);
+    if(m){
+      const y=+m[1], mo=+m[2], d=+m[3], hh=+m[4], mi=+m[5], ss=+(m[6]||0);
+      const dt = new Date(y, mo-1, d, hh, mi, ss, 0);
+      return Number.isFinite(dt.getTime()) ? dt : null;
+    }
+    m = s.match(/^(\d{2})\/(\d{2})\/(\d{4}) T:(\d{2})(?::(\d{2}))?$/);
+    if(m){
+      const d=+m[1], mo=+m[2], y=+m[3], hh=+m[4], mi=+m[5], ss=+(m[6]||0);
+      const dt = new Date(y, mo-1, d, hh, mi, ss, 0);
+      return Number.isFinite(dt.getTime()) ? dt : null;
+    }
+    return null;
+  }
+
+  function flowToM3PerHour(v, unit){
+    if(v == null) return null;
+    switch(unit){
+      case "m3h": return v;
+      case "m3s": return v * 3600;
+      case "ls":  return (v / 1000) * 3600;
+      case "lmin":return (v / 1000) * 60;
+      case "lh":  return (v / 1000);
+      default: return null;
+    }
+  }
+
+  function hourStart(d){ const x=new Date(d.getTime()); x.setMinutes(0,0,0); return x; }
+  function nextHour(d){ const x=hourStart(d); x.setHours(x.getHours()+1); return x; }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function toISOHour(d){
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:00:00`;
+  }
+  function interpFlow(t, t1, f1, t2, f2){
+    const dt = t2 - t1;
+    if(dt <= 0) return f1;
+    const r = (t - t1) / dt;
+    return f1 + (f2 - f1) * r;
+  }
+
+  function integrateHourly(points){
+    const hourly = new Map();
+    let total = 0;
+
+    for(let i=0;i<points.length-1;i++){
+      let t1 = points[i].t.getTime();
+      let t2 = points[i+1].t.getTime();
+      let f1 = points[i].f; // m³/h
+      let f2 = points[i+1].f;
+
+      if(!(t2 > t1)) continue;
+
+      while(t1 < t2){
+        const d1 = new Date(t1);
+        const keyDate = hourStart(d1);
+        const boundary = nextHour(d1).getTime();
+        const segEnd = Math.min(t2, boundary);
+
+        const fEnd = interpFlow(segEnd, t1, f1, t2, f2);
+
+        const dtHours = (segEnd - t1) / 3600000;
+        const vol = (f1 + fEnd) / 2 * dtHours; // (m³/h)*h = m³
+
+        const key = toISOHour(keyDate);
+        hourly.set(key, (hourly.get(key)||0) + vol);
+        total += vol;
+
+        t1 = segEnd;
+        f1 = fEnd;
+      }
+    }
+
+    const keys = Array.from(hourly.keys()).sort();
+    const rows = keys.map(k => ({Heure:k, Volume_horaire_m3: hourly.get(k)}));
+    return {rows, total};
+  }
+
+  function fmt3(x){ return (Math.round(x*1000)/1000).toFixed(3); }
+
+  function parseHourKeyToDate(key){
+    const m = key.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):00:00$/);
+    if(!m) return null;
+    const y=+m[1], mo=+m[2], d=+m[3], hh=+m[4];
+    const dt = new Date(y, mo-1, d, hh, 0, 0, 0);
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+
+  function toISODateOnly(d){
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  // Build CSV for current filtered range; cumul can be included and is re-based.
+  function buildCsvFromRows(rowsForCsv, withCumul){
+    const head = withCumul ? "Heure;Volume_horaire_m3;Cumul_m3" : "Heure;Volume_horaire_m3";
+    const lines = [head];
+
+    for(const r of rowsForCsv){
+      lines.push(withCumul
+        ? `${r.Heure};${fmt3(r.Volume_horaire_m3)};${fmt3(r.Cumul_m3)}`
+        : `${r.Heure};${fmt3(r.Volume_horaire_m3)}`
+      );
+    }
+
+    // Add marker line with matching number of columns (avoids breaking CSV structure)
+    if(withCumul){
+      lines.push(`Généré avec un outil INSTR'O CONSULTING;;`);
+    } else {
+      lines.push(`Généré avec un outil INSTR'O CONSULTING;`);
+    }
+
+    return lines.join("\n");
+  }
+
+  function computeFilteredRowsWithRebasedCumul(startDate, endDate, withCumul){
+    const filtered = [];
+    let volSum = 0;
+    let cumul = 0;
+
+    for(const r of outRows){
+      const dt = parseHourKeyToDate(r.Heure);
+      if(!dt) continue;
+      if(dt >= startDate && dt <= endDate){
+        volSum += r.Volume_horaire_m3;
+        if(withCumul){
+          cumul += r.Volume_horaire_m3;
+          filtered.push({ ...r, Cumul_m3: cumul });
+        } else {
+          filtered.push({ ...r });
+        }
+      }
+    }
+    return { filtered, volSum };
+  }
+
+  function renderRows(rowsToRender, withCumul){
+    outBody.innerHTML = "";
+    thCumul.style.display = withCumul ? "table-cell" : "none";
+
+    const n = Math.min(250, rowsToRender.length);
+    for(let i=0;i<n;i++){
+      const r = rowsToRender[i];
+      const tr = document.createElement("tr");
+      tr.innerHTML = withCumul
+        ? `<td>${r.Heure}</td><td>${fmt3(r.Volume_horaire_m3)}</td><td>${fmt3(r.Cumul_m3)}</td>`
+        : `<td>${r.Heure}</td><td>${fmt3(r.Volume_horaire_m3)}</td>`;
+      outBody.appendChild(tr);
+    }
+    if(rowsToRender.length > n){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="${withCumul?3:2}" style="color:#a9b4d0;">… aperçu limité à ${n} lignes (sur ${rowsToRender.length}).</td>`;
+      outBody.appendChild(tr);
+    }
+  }
+
+  function updateFormulaBox(){
+    // show formula used; keep it short but explicit
+    formulaBoxEl.style.display = "block";
+    formulaTextEl.textContent =
+`1) Conversion unité débit → m³/h
+   (ex : L/s → m³/h :  Q(m³/h) = Q(L/s) / 1000 × 3600)
+
+2) Intégration trapézoïdale entre deux mesures (t1,Q1) et (t2,Q2)
+   V = (Q1 + Q2) / 2 × Δt
+   avec Δt en heures ⇒ (m³/h) × h = m³
+
+3) Agrégation horaire
+   Si un intervalle traverse une frontière d’heure, il est découpé et réparti sur les heures concernées.`;
+  }
+
+  function applyDateFilter(){
+    if(outRows.length === 0) return;
+
+    const s = dateStartEl.value;
+    const e = dateEndEl.value;
+    if(!s || !e){
+      log("Sélectionne une date début et une date fin.", "warn");
+      return;
+    }
+
+    const start = new Date(s + "T00:00:00");
+    const end = new Date(e + "T23:59:59");
+    if(end < start){
+      log("Plage invalide : la date fin est avant la date début.", "err");
+      return;
+    }
+
+    const withCumul = withCumulEl.checked;
+    const { filtered, volSum } = computeFilteredRowsWithRebasedCumul(start, end, withCumul);
+
+    filteredRows = filtered; // store for CSV export
+    renderRows(filteredRows, withCumul);
+
+    statRangeEl.textContent = `${s} → ${e}`;
+    statHoursEl.textContent = String(filteredRows.length);
+    statVolEl.textContent = fmt3(volSum);
+
+    // Prepare CSV for THIS range (extracted) with marker line
+    outCsv = buildCsvFromRows(filteredRows, withCumul);
+
+    // enable download only if something exists
+    btnDownload.disabled = filteredRows.length === 0;
+  }
+
+  btnLoad.addEventListener("click", async () => {
+    // reset only what depends on conversion
+    outBody.innerHTML = "";
+    statRangeEl.textContent = "—";
+    statHoursEl.textContent = "—";
+    statVolEl.textContent = "—";
+    dateStartEl.disabled = true;
+    dateEndEl.disabled = true;
+    btnApplyFilter.disabled = true;
+    dateStartEl.value = "";
+    dateEndEl.value = "";
+    formulaBoxEl.style.display = "none";
+    formulaTextEl.textContent = "";
+    filteredRows = [];
+    outCsv = "";
+    btnDownload.disabled = true;
+
+    if(!fileEl.files || fileEl.files.length===0){
+      log("Aucun fichier sélectionné.", "err");
+      return;
+    }
+    const file = fileEl.files[0];
+    rawText = await file.text();
+
+    const sepMode = getRadio("sep");
+    const sep = (sepMode === "auto") ? detectSeparator(rawText) : (sepMode === "\\t" ? "\t" : sepMode);
+    log(`Séparateur utilisé: "${sep === "\t" ? "TAB" : sep}"`, "ok");
+
+    const parsed = parseCsv(rawText, sep);
+    rows = parsed.data;
+
+    kpiLines.textContent = String(rows.length);
+
+    const manual = parseInt(headerRowEl.value, 10);
+    if(manual && manual > 0){
+      headerIndex = manual - 1;
+      log(`Ligne d’en-tête forcée = ${manual}`, "ok");
+    } else {
+      headerIndex = findHeaderRow(rows);
+      log(`Auto-détection en-tête : ligne ${headerIndex+1}`, "ok");
+    }
+
+    header = (rows[headerIndex] || []).map(x => (x||"").replace(/^"+|"+$/g,""));
+    if(header.length < 2){
+      log("En-tête trop courte. Essaie de forcer la bonne ligne d’en-tête.", "warn");
+    } else {
+      log(`Colonnes détectées: ${header.length}`, "ok");
+      log(`Colonnes (début): ${header.slice(0, 8).join(" | ")}${header.length>8 ? " | …" : ""}`, "info");
+    }
+
+    fillColumnSelectors(header);
+    btnConvert.disabled = false;
+
+    // reset conversion KPIs
+    kpiPoints.textContent="—";
+    kpiTotal.textContent="—";
+  });
+
+  btnConvert.addEventListener("click", () => {
+    if(rows.length===0 || headerIndex<0){
+      log("Charge d’abord le fichier.", "err");
+      return;
+    }
+
+    const decMode = getRadio("dec");
+    const unit = unitEl.value;
+
+    const iDate = parseInt(colDateEl.value, 10);
+    const iTime = parseInt(colTimeEl.value, 10);
+    const iFlow = parseInt(colFlowEl.value, 10);
+
+    const dateFmt = dateFmtEl.value;
+    const timeFmt = timeFmtEl.value;
+
+    if(!(iDate >= 0) || !(iFlow >= 0)){
+      log("Mapping incomplet : il faut au minimum Date + Débit.", "err");
+      return;
+    }
+
+    const points = [];
+    let bad = 0;
+
+    for(let r=headerIndex+1; r<rows.length; r++){
+      const row = rows[r];
+      const ds = row[iDate];
+      const ts = (iTime >= 0) ? row[iTime] : "";
+      const fs = row[iFlow];
+
+      const dt = parseDateTime(ds, ts, dateFmt, timeFmt);
+      const fRaw = parseNumber(fs, decMode);
+      const f = flowToM3PerHour(fRaw, unit);
+
+      if(!dt || f == null || !Number.isFinite(f) || f < 0){
+        bad++;
+        continue;
+      }
+      points.push({t: dt, f});
+    }
+
+    if(points.length < 2){
+      log(`Pas assez de points valides (${points.length}). Vérifie les colonnes et formats.`, "err");
+      return;
+    }
+
+    points.sort((a,b)=>a.t-b.t);
+    if(bad>0) log(`${bad} ligne(s) ignorée(s) (date/heure/débit invalide ou NaN).`, "warn");
+
+    const res = integrateHourly(points);
+    outRows = res.rows;
+
+    kpiPoints.textContent = String(points.length);
+    kpiTotal.textContent = fmt3(res.total);
+
+    // bounds for date filter
+    const first = parseHourKeyToDate(outRows[0]?.Heure || "");
+    const last = parseHourKeyToDate(outRows[outRows.length-1]?.Heure || "");
+    if(first && last){
+      outMinDate = new Date(first.getFullYear(), first.getMonth(), first.getDate(), 0,0,0,0);
+      outMaxDate = new Date(last.getFullYear(), last.getMonth(), last.getDate(), 0,0,0,0);
+
+      const minStr = toISODateOnly(outMinDate);
+      const maxStr = toISODateOnly(outMaxDate);
+
+      dateStartEl.min = minStr; dateStartEl.max = maxStr;
+      dateEndEl.min = minStr; dateEndEl.max = maxStr;
+
+      dateStartEl.value = minStr;
+      dateEndEl.value = maxStr;
+
+      dateStartEl.disabled = false;
+      dateEndEl.disabled = false;
+      btnApplyFilter.disabled = false;
+
+      updateFormulaBox();
+      applyDateFilter(); // initial full range
+
+      log(`Conversion OK : ${outRows.length} heure(s). Filtre prêt (${minStr} → ${maxStr}).`, "ok");
+    } else {
+      log("Impossible de déterminer la plage de dates traitée (format d’heure inattendu).", "warn");
+    }
+  });
+
+  btnApplyFilter.addEventListener("click", applyDateFilter);
+  dateStartEl.addEventListener("change", applyDateFilter);
+  dateEndEl.addEventListener("change", applyDateFilter);
+
+  btnDownload.addEventListener("click", () => {
+    if(!outCsv){ log("Rien à télécharger.", "err"); return; }
+
+    const s = dateStartEl.value || "debut";
+    const e = dateEndEl.value || "fin";
+
+    const blob = new Blob([outCsv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    const base = (fileEl.files && fileEl.files[0]) ? fileEl.files[0].name.replace(/\.csv$/i,'') : "export";
+    a.download = `${base}_volume_horaire_${s}_au_${e}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    log("Téléchargement lancé (CSV plage filtrée, séparateur ';').", "ok");
+  });
+
+  btnReset.addEventListener("click", resetUI);
+
+  // Toggle cumul: re-render and rebuild CSV (re-based cumul for filtered range)
+  withCumulEl.addEventListener("change", () => {
+    if(outRows.length > 0){
+      applyDateFilter();
+    }
+  });
+
+  // Init
+  resetUI();
+})();
+</script>
+</body>
+</html>
